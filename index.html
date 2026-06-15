@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Controle de Desperdicio | Supermercado Castanha</title>
+    <link rel="stylesheet" href="src/styles.css">
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="workspace" aria-labelledby="page-title">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">Supermercado Castanha</p>
+            <h1 id="page-title">Controle de Desperdício de Perecíveis</h1>
+          </div>
+          <div class="sheet-chip" title="Planilha configurada para o MVP">
+            <span class="chip-dot" aria-hidden="true"></span>
+            Google Sheets
+          </div>
+        </header>
+
+        <div class="content-grid">
+          <form id="waste-form" class="form-panel" novalidate>
+            <div class="section-heading">
+              <h2>Novo lançamento</h2>
+              <p>Registre um item por envio.</p>
+            </div>
+
+            <div id="status-message" class="status-message" role="status" aria-live="polite"></div>
+
+            <div class="field-grid two-columns">
+              <label class="field">
+                <span>Setor</span>
+                <select id="setor" name="setor" required>
+                  <option value="">Selecione</option>
+                </select>
+              </label>
+
+              <label class="field">
+                <span>Data</span>
+                <input id="data" name="data" type="date" required>
+              </label>
+            </div>
+
+            <div class="field-grid two-columns wide-first">
+              <label class="field">
+                <span>Item</span>
+                <input id="item" name="item" type="text" autocomplete="off" placeholder="Ex.: Pizza Presunto" required>
+              </label>
+
+              <label class="field">
+                <span>Código</span>
+                <input id="codigo" name="codigo" type="text" inputmode="numeric" autocomplete="off" placeholder="Ex.: 22400" required>
+              </label>
+            </div>
+
+            <fieldset class="quantity-box">
+              <legend>Quantidade</legend>
+              <div class="mode-switch" role="radiogroup" aria-label="Tipo de quantidade">
+                <label>
+                  <input type="radio" name="tipoQuantidade" value="kg" checked>
+                  <span>KG</span>
+                </label>
+                <label>
+                  <input type="radio" name="tipoQuantidade" value="un">
+                  <span>UN</span>
+                </label>
+              </div>
+
+              <div class="field-grid two-columns">
+                <label class="field" id="kg-field">
+                  <span>QTD (KG)</span>
+                  <input id="quantidadeKg" name="quantidadeKg" type="text" inputmode="decimal" placeholder="Ex.: 1,224">
+                </label>
+
+                <label class="field disabled" id="un-field">
+                  <span>QTD (UN)</span>
+                  <input id="quantidadeUn" name="quantidadeUn" type="text" inputmode="numeric" placeholder="Ex.: 3" disabled>
+                </label>
+              </div>
+            </fieldset>
+
+            <div class="field-grid two-columns">
+              <label class="field">
+                <span>Preço unitário</span>
+                <input id="precoUnitario" name="precoUnitario" type="text" inputmode="decimal" placeholder="Ex.: 59,90" required>
+              </label>
+
+              <label class="field">
+                <span>Motivo</span>
+                <select id="motivo" name="motivo" required>
+                  <option value="">Selecione</option>
+                </select>
+              </label>
+            </div>
+
+            <label class="field">
+              <span>Observação</span>
+              <textarea id="observacao" name="observacao" rows="3" placeholder="Opcional"></textarea>
+            </label>
+
+            <div class="form-footer">
+              <output id="estimated-loss" class="estimated-loss">Perda estimada: R$ 0,00</output>
+              <div class="actions">
+                <button type="reset" class="button secondary">Limpar</button>
+                <button id="submit-button" type="submit" class="button primary">Salvar lançamento</button>
+              </div>
+            </div>
+          </form>
+
+          <aside class="side-panel" aria-label="Resumo do lançamento">
+            <section class="info-panel">
+              <p class="eyebrow">Destino</p>
+              <h2>Controle_Desperdicio v1</h2>
+              <p class="muted">Aba <strong>Página1</strong>. O Apps Script grava uma nova linha seguindo o cabeçalho aprovado.</p>
+              <a class="sheet-link" href="https://docs.google.com/spreadsheets/d/1dCdJ6O8HAKerJAmrVeeJi3ipyK7wN4eVrAFSK5Hhcrc/edit" target="_blank" rel="noreferrer">Abrir planilha</a>
+            </section>
+
+            <section class="info-panel">
+              <p class="eyebrow">Último lançamento</p>
+              <div id="last-entry" class="last-entry empty">
+                Nenhum envio nesta sessão.
+              </div>
+            </section>
+
+            <section class="info-panel warning">
+              <p class="eyebrow">MVP sem login</p>
+              <p>Quem tiver a URL publicada do formulário poderá enviar dados para o endpoint configurado.</p>
+            </section>
+          </aside>
+        </div>
+      </section>
+    </main>
+
+    <script src="src/config.js"></script>
+    <script src="src/app.js"></script>
+  </body>
+</html>

@@ -1,0 +1,6 @@
+node_modules/
+.codex-skill-staging/
+outputs/
+.DS_Store
+Thumbs.db
+*.log
