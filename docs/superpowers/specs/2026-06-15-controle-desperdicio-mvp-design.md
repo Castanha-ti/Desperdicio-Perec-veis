@@ -13,11 +13,14 @@ Criar uma pagina web simples para lancamento manual de desperdicio de pereciveis
 - Campos: `#`, `DATA`, `SETOR`, `ITEM`, `CODIGO`, `QTD (KG)`, `QTD (UN)`, `R$`, `MOTIVO DO DESCARTE`, `OBSERVACAO`.
 - Quantidade deve usar KG ou UN, nunca ambos.
 - `R$` representa preco unitario.
+- Campo `ITEM` oferece sugestoes dos itens ja lancados e pode preencher `CODIGO` e `R$` com base no ultimo lancamento daquele item.
 - Leitura de imagens por IA fica fora do MVP e entra como fase 2.
 
 ## Arquitetura
 
 O frontend coleta e valida os dados no navegador, normaliza numeros brasileiros e envia JSON para um endpoint publico do Apps Script. O Apps Script valida novamente os campos, prepara a estrutura da aba, calcula o proximo sequencial e adiciona uma nova linha na planilha.
+
+Para sugestoes de itens, o frontend chama `doGet?action=items` no Apps Script ao abrir a pagina. O Apps Script le a aba, monta uma lista unica dos itens mais recentes, limita a 500 registros e usa cache de curta duracao para reduzir leituras da planilha.
 
 ## Interface
 

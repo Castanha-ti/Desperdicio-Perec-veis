@@ -20,6 +20,12 @@ https://docs.google.com/spreadsheets/d/1dCdJ6O8HAKerJAmrVeeJi3ipyK7wN4eVrAFSK5Hh
 
 O campo `R$` representa preço unitário. O operador deve informar `QTD (KG)` ou `QTD (UN)`, nunca os dois.
 
+## Sugestões de itens
+
+Ao abrir a página, o frontend consulta o Apps Script com `action=items` e carrega até 500 itens únicos mais recentes da aba `Página1`.
+
+Quando o operador digita ou escolhe um item já lançado, o formulário sugere `CÓDIGO` e `Preço unitário` com base no último lançamento daquele item. A busca é carregada uma vez ao abrir a tela, com cache de 10 minutos no Apps Script.
+
 ## Configurar o Apps Script
 
 1. Abra a planilha.
@@ -32,6 +38,8 @@ O campo `R$` representa preço unitário. O operador deve informar `QTD (KG)` ou
 8. Executar como: `Eu`.
 9. Quem pode acessar: `Qualquer pessoa`.
 10. Copie a URL gerada terminando em `/exec`.
+
+Sempre que `apps-script/Code.gs` for alterado, crie uma nova versão/implantação ou edite a implantação existente para usar a versão mais recente.
 
 ## Configurar o frontend
 

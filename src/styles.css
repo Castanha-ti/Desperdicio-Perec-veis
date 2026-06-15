@@ -157,6 +157,12 @@ h2 {
   color: #3d443b;
 }
 
+.field-hint {
+  min-height: 18px;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
 input,
 select,
 textarea {

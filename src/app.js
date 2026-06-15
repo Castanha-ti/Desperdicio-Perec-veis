@@ -90,12 +90,39 @@
     return getQuantityValue(payload) * (payload.precoUnitario || 0);
   }
 
+  function normalizeItemKey(value) {
+    return String(value || "").trim().replace(/\s+/g, " ").toLocaleLowerCase("pt-BR");
+  }
+
+  function findItemSuggestion(suggestions, value) {
+    const key = normalizeItemKey(value);
+    if (!key) return null;
+    return suggestions.find((suggestion) => normalizeItemKey(suggestion.item) === key) || null;
+  }
+
+  function upsertItemSuggestion(suggestions, payload, limit = 500) {
+    const item = String(payload.item || "").trim();
+    if (!item) return suggestions.slice(0, limit);
+
+    const key = normalizeItemKey(item);
+    const nextSuggestion = {
+      item,
+      codigo: String(payload.codigo || "").trim(),
+      precoUnitario: payload.precoUnitario
+    };
+
+    const filtered = suggestions.filter((suggestion) => normalizeItemKey(suggestion.item) !== key);
+    return [nextSuggestion, ...filtered].slice(0, limit);
+  }
+
   const Core = {
     SECTORS,
     REASONS,
     parseLocaleNumber,
     validateEntry,
     calculateEstimatedLoss,
+    findItemSuggestion,
+    upsertItemSuggestion,
     todayIso
   };
 
@@ -112,6 +139,11 @@
   const setorSelect = document.getElementById("setor");
   const motivoSelect = document.getElementById("motivo");
   const dataInput = document.getElementById("data");
+  const itemInput = document.getElementById("item");
+  const codigoInput = document.getElementById("codigo");
+  const precoUnitarioInput = document.getElementById("precoUnitario");
+  const itemSuggestionsList = document.getElementById("item-suggestions");
+  const itemSuggestionStatus = document.getElementById("item-suggestion-status");
   const quantidadeKg = document.getElementById("quantidadeKg");
   const quantidadeUn = document.getElementById("quantidadeUn");
   const kgField = document.getElementById("kg-field");
@@ -120,6 +152,7 @@
   const submitButton = document.getElementById("submit-button");
   const estimatedLoss = document.getElementById("estimated-loss");
   const lastEntry = document.getElementById("last-entry");
+  let itemSuggestions = [];
 
   function fillOptions(select, values) {
     values.forEach((value) => {
@@ -144,6 +177,16 @@
       motivo: formData.get("motivo"),
       observacao: formData.get("observacao")
     };
+  }
+
+  function formatNumberInput(value) {
+    if (value === "" || value === null || value === undefined) return "";
+    const number = Number(value);
+    if (!Number.isFinite(number)) return "";
+    return new Intl.NumberFormat("pt-BR", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 3
+    }).format(number);
   }
 
   function setStatus(type, message) {
@@ -203,6 +246,98 @@
     `;
   }
 
+  function setSuggestionStatus(message) {
+    if (!itemSuggestionStatus) return;
+    itemSuggestionStatus.textContent = message;
+  }
+
+  function renderItemSuggestions(items) {
+    itemSuggestions = Array.isArray(items) ? items.slice(0, 500) : [];
+    if (!itemSuggestionsList) return;
+
+    itemSuggestionsList.innerHTML = "";
+    itemSuggestions.forEach((suggestion) => {
+      const option = document.createElement("option");
+      option.value = suggestion.item;
+      option.label = [suggestion.codigo, formatNumberInput(suggestion.precoUnitario)]
+        .filter(Boolean)
+        .join(" | ");
+      itemSuggestionsList.appendChild(option);
+    });
+
+    setSuggestionStatus(
+      itemSuggestions.length
+        ? `${itemSuggestions.length} itens recentes disponíveis para sugestão.`
+        : "Nenhum item anterior encontrado para sugestão."
+    );
+  }
+
+  function requestItemsJsonp(url) {
+    return new Promise((resolve, reject) => {
+      const callbackName = `__desperdicioItems${Date.now()}${Math.floor(Math.random() * 100000)}`;
+      const separator = url.includes("?") ? "&" : "?";
+      const script = document.createElement("script");
+      const timeout = global.setTimeout(() => {
+        cleanup();
+        reject(new Error("Tempo esgotado ao carregar sugestões."));
+      }, 12000);
+
+      function cleanup() {
+        global.clearTimeout(timeout);
+        delete global[callbackName];
+        script.remove();
+      }
+
+      global[callbackName] = (data) => {
+        cleanup();
+        resolve(data);
+      };
+
+      script.onerror = () => {
+        cleanup();
+        reject(new Error("Não foi possível carregar sugestões."));
+      };
+      script.src = `${url}${separator}action=items&callback=${encodeURIComponent(callbackName)}`;
+      document.head.appendChild(script);
+    });
+  }
+
+  async function loadItemSuggestions() {
+    const url = String(config.appsScriptUrl || "").trim();
+    if (!url || url.includes("COLE_A_URL")) {
+      setSuggestionStatus("Configure o Apps Script para carregar sugestões.");
+      return;
+    }
+
+    setSuggestionStatus("Carregando sugestões...");
+    try {
+      const data = await requestItemsJsonp(url);
+      if (!data || data.ok === false) {
+        throw new Error(data && data.message ? data.message : "Resposta inválida.");
+      }
+      renderItemSuggestions(data.items || []);
+    } catch (error) {
+      renderItemSuggestions([]);
+      setSuggestionStatus("Sugestões indisponíveis. O lançamento manual continua funcionando.");
+    }
+  }
+
+  function applyItemSuggestion() {
+    const suggestion = findItemSuggestion(itemSuggestions, itemInput.value);
+    if (!suggestion) return;
+
+    if (!codigoInput.value.trim() && suggestion.codigo) {
+      codigoInput.value = suggestion.codigo;
+    }
+
+    if (!precoUnitarioInput.value.trim() && suggestion.precoUnitario) {
+      precoUnitarioInput.value = formatNumberInput(suggestion.precoUnitario);
+    }
+
+    setSuggestionStatus("Código e preço sugeridos a partir do último lançamento desse item.");
+    updateEstimate();
+  }
+
   async function submitEntry(payload) {
     const url = String(config.appsScriptUrl || "").trim();
     if (!url || url.includes("COLE_A_URL")) {
@@ -246,6 +381,7 @@
       const response = await submitEntry(result.payload);
       setStatus("success", "Lançamento salvo na planilha.");
       renderLastEntry(result.payload, response);
+      renderItemSuggestions(upsertItemSuggestion(itemSuggestions, result.payload));
       form.reset();
       dataInput.value = todayIso();
       updateQuantityMode();
@@ -268,6 +404,8 @@
 
   form.addEventListener("input", updateEstimate);
   form.addEventListener("change", updateEstimate);
+  itemInput.addEventListener("change", applyItemSuggestion);
+  itemInput.addEventListener("blur", applyItemSuggestion);
   form.querySelectorAll("input[name='tipoQuantidade']").forEach((input) => {
     input.addEventListener("change", updateQuantityMode);
   });
@@ -277,4 +415,5 @@
   dataInput.value = todayIso();
   updateQuantityMode();
   updateEstimate();
+  loadItemSuggestions();
 })(typeof window !== "undefined" ? window : globalThis);

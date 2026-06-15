@@ -8,14 +8,27 @@ function desperdicioConfig_() {
   };
 }
 
-function doGet() {
-  var config = desperdicioConfig_();
-  return json_({
-    ok: true,
-    service: 'controle-desperdicio',
-    spreadsheetId: config.spreadsheetId,
-    sheetName: config.sheetName
-  });
+function doGet(e) {
+  try {
+    var config = desperdicioConfig_();
+    var action = e && e.parameter ? String(e.parameter.action || '') : '';
+
+    if (action === 'items') {
+      return respond_(getItemSuggestions_(), e);
+    }
+
+    return respond_({
+      ok: true,
+      service: 'controle-desperdicio',
+      spreadsheetId: config.spreadsheetId,
+      sheetName: config.sheetName
+    }, e);
+  } catch (error) {
+    return respond_({
+      ok: false,
+      message: error.message || String(error)
+    }, e);
+  }
 }
 
 function doPost(e) {
@@ -42,6 +55,7 @@ function doPost(e) {
 
     sheet.appendRow(row);
     formatLastRow_(sheet);
+    clearItemsCache_();
 
     return json_({
       ok: true,
@@ -168,6 +182,57 @@ function getNextSequence_(sheet) {
   }, 0) + 1;
 }
 
+function getItemSuggestions_() {
+  var cache = CacheService.getScriptCache();
+  var cacheKey = 'desperdicio_item_suggestions_v2';
+  var cached = cache.get(cacheKey);
+  if (cached) {
+    return JSON.parse(cached);
+  }
+
+  var sheet = getSheet_();
+  var lastRow = sheet.getLastRow();
+  if (lastRow < 3) {
+    return { ok: true, items: [] };
+  }
+
+  var lastColumn = Math.max(sheet.getLastColumn(), desperdicioConfig_().headers.length);
+  var headers = sheet.getRange(2, 1, 1, lastColumn).getValues()[0].map(normalize_);
+  var itemIndex = headers.indexOf('ITEM');
+  var codigoIndex = headers.indexOf('CÓDIGO');
+  var precoIndex = headers.indexOf('R$');
+
+  if (itemIndex === -1) {
+    throw new Error('Coluna ITEM não encontrada.');
+  }
+
+  var rows = sheet.getRange(3, 1, lastRow - 2, lastColumn).getValues();
+  var seen = {};
+  var items = [];
+
+  for (var i = rows.length - 1; i >= 0 && items.length < 500; i--) {
+    var row = rows[i];
+    var item = String(row[itemIndex] || '').trim();
+    var key = normalizeItemKey_(item);
+    if (!item || seen[key]) continue;
+
+    seen[key] = true;
+    items.push({
+      item: item,
+      codigo: codigoIndex >= 0 ? String(row[codigoIndex] || '').trim() : '',
+      precoUnitario: precoIndex >= 0 ? normalizeNumber_(row[precoIndex]) : ''
+    });
+  }
+
+  var payload = { ok: true, items: items };
+  cache.put(cacheKey, JSON.stringify(payload), 600);
+  return payload;
+}
+
+function clearItemsCache_() {
+  CacheService.getScriptCache().remove('desperdicio_item_suggestions_v2');
+}
+
 function formatLastRow_(sheet) {
   var row = sheet.getLastRow();
   sheet.getRange(row, 2).setNumberFormat('dd/MM/yyyy');
@@ -181,6 +246,20 @@ function json_(payload) {
     .setMimeType(ContentService.MimeType.JSON);
 }
 
+function respond_(payload, e) {
+  var callback = e && e.parameter ? String(e.parameter.callback || '').trim() : '';
+  if (/^[A-Za-z_$][0-9A-Za-z_$]*(\.[A-Za-z_$][0-9A-Za-z_$]*)*$/.test(callback)) {
+    return ContentService
+      .createTextOutput(callback + '(' + JSON.stringify(payload) + ');')
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return json_(payload);
+}
+
 function normalize_(value) {
   return String(value || '').trim().toUpperCase();
+}
+
+function normalizeItemKey_(value) {
+  return String(value || '').trim().replace(/\s+/g, ' ').toLowerCase();
 }

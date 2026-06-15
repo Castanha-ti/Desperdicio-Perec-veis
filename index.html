@@ -46,7 +46,9 @@
             <div class="field-grid two-columns wide-first">
               <label class="field">
                 <span>Item</span>
-                <input id="item" name="item" type="text" autocomplete="off" placeholder="Ex.: Pizza Presunto" required>
+                <input id="item" name="item" type="text" list="item-suggestions" autocomplete="off" placeholder="Ex.: Pizza Presunto" required>
+                <datalist id="item-suggestions"></datalist>
+                <small id="item-suggestion-status" class="field-hint">Carregando sugestões...</small>
               </label>
 
               <label class="field">

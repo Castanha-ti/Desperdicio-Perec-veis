@@ -58,3 +58,24 @@ test("calculateEstimatedLoss uses quantity times unit price", () => {
 
   assert.equal(Number(value.toFixed(3)), 73.318);
 });
+
+test("findItemSuggestion matches item names ignoring case and extra spaces", () => {
+  const suggestion = core.findItemSuggestion(
+    [
+      { item: "Pizza Presunto", codigo: "22400", precoUnitario: 59.9 },
+      { item: "Bolo de Fubá", codigo: "10730", precoUnitario: 31.9 }
+    ],
+    "  pizza presunto  "
+  );
+
+  assert.deepEqual(suggestion, { item: "Pizza Presunto", codigo: "22400", precoUnitario: 59.9 });
+});
+
+test("upsertItemSuggestion keeps the newest data for an item", () => {
+  const suggestions = core.upsertItemSuggestion(
+    [{ item: "Pizza Presunto", codigo: "22400", precoUnitario: 59.9 }],
+    { item: "pizza presunto", codigo: "22401", precoUnitario: 62.5 }
+  );
+
+  assert.deepEqual(suggestions, [{ item: "pizza presunto", codigo: "22401", precoUnitario: 62.5 }]);
+});
